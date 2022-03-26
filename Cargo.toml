@@ -1,0 +1,8 @@
+[dependencies]
+crates-index = "0.18.7"
+semver = "1.0.6"
+
+[package]
+edition = "2021"
+name = "carp2"
+version = "0.1.0"
