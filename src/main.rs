@@ -13,7 +13,13 @@ fn main() {
         return;
     }
     match args[1].to_lowercase().as_str() {
-        "test" => println!("Hello, world!"),
+        "test" => match cargoreader::read_cargo_file() {
+            Ok(file) => match cargoreader::parse_cargo_file(file) {
+                Ok(parsed) => println!("Ok: {:?}", parsed),
+                Err(err) => eprintln!("Parse error: {}", err),
+            },
+            Err(err) => eprintln!("Read error: {}", err),
+        },
         unknown_command => eprintln!(
             "Unknown command '{}'. Use 'carp help' for a list of commands.",
             unknown_command
