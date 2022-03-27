@@ -3,7 +3,7 @@ use crate::utils::Result;
 use crates_index::{Crate, Index};
 use semver::{Version, VersionReq};
 
-fn get_crate_version<'a>(crte: &'a Crate) -> Result<Version> {
+fn get_crate_latest_version(crte: &Crate) -> Result<Version> {
     let crate_latest: Version = crte
         .highest_stable_version()
         .ok_or(format!(
@@ -16,12 +16,12 @@ fn get_crate_version<'a>(crte: &'a Crate) -> Result<Version> {
 }
 
 fn compare_crate_version(current_version: &VersionReq, crte: &Crate) -> Result<bool> {
-    let crate_latest = get_crate_version(crte)?;
+    let crate_latest = get_crate_latest_version(crte)?;
     Ok(current_version.matches(&crate_latest))
 }
 
 fn compare_crate_version_strict(current_version: &Version, crte: &Crate) -> Result<bool> {
-    let crate_latest = get_crate_version(crte)?;
+    let crate_latest = get_crate_latest_version(crte)?;
     Ok(*current_version == crate_latest)
 }
 
@@ -52,4 +52,14 @@ pub fn out_of_date_crate_infos<'a>(
         }
     }
     Ok(filtered_crate_infos)
+}
+
+pub fn crate_has_version(version: &VersionReq, crte: &Crate) -> Result<bool> {
+    for crate_version in crte.versions() {
+        let crate_semver: Version = crate_version.version().parse()?;
+        if version.matches(&crate_semver) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
