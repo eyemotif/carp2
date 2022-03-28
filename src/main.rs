@@ -1,5 +1,6 @@
 pub mod cargoreader;
 pub mod common;
+pub mod crateinfo;
 pub mod cratesio;
 pub mod utils;
 
@@ -7,8 +8,8 @@ use std::env;
 use utils::Result;
 
 fn check_cargo<'a>(
-    file: &'a Vec<cargoreader::CrateInfo>,
-) -> Result<Vec<&'a cargoreader::CrateInfo<'a>>> {
+    file: &'a Vec<crateinfo::CrateInfo>,
+) -> Result<Vec<&'a crateinfo::CrateInfo<'a>>> {
     let index = crates_index::Index::new_cargo_default()?;
     let out_of_date: Vec<_> = cratesio::out_of_date_crate_infos(false, &index, &file)?;
     Ok(out_of_date)

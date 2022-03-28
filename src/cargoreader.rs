@@ -1,24 +1,17 @@
 use crate::common::get_cargo_path;
+use crate::crateinfo::{get_versions_from_str, CrateInfo, RawToml};
 use crate::utils::Result;
-use semver::{Version, VersionReq};
 use std::fs;
 use toml::Value;
 
-#[derive(Debug)]
-pub struct CrateInfo<'a> {
-    pub name: String,
-    pub version: Version,
-    pub version_req: VersionReq,
-    pub raw_toml_value: &'a Value,
-}
-
 fn parse_dependency_value<'a>(name: &str, value: &'a Value) -> Result<CrateInfo<'a>> {
     if let Some(string) = value.as_str() {
+        let (version_req, version) = get_versions_from_str(string)?;
         Ok(CrateInfo {
             name: name.to_string(),
-            version: string.parse()?,
-            version_req: string.parse()?,
-            raw_toml_value: value,
+            version,
+            version_req,
+            raw_toml_value: RawToml::String(value),
         })
     } else if let Some(table) = value.as_table() {
         if let Some(ver) = table
@@ -29,11 +22,12 @@ fn parse_dependency_value<'a>(name: &str, value: &'a Value) -> Result<CrateInfo<
             ))?
             .as_str()
         {
+            let (version_req, version) = get_versions_from_str(ver)?;
             Ok(CrateInfo {
                 name: name.to_string(),
-                version: ver.parse()?,
-                version_req: ver.parse()?,
-                raw_toml_value: value,
+                version,
+                version_req,
+                raw_toml_value: RawToml::Table(value),
             })
         } else {
             Err(format!(

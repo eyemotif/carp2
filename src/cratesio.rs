@@ -1,4 +1,4 @@
-use crate::cargoreader::CrateInfo;
+use crate::crateinfo::CrateInfo;
 use crate::utils::Result;
 use crates_index::{Crate, Index};
 use semver::{Version, VersionReq};
@@ -38,7 +38,13 @@ pub fn out_of_date_crate_infos<'a>(
                 .crate_(&crate_info.name)
                 .ok_or(format!("Crate '{}' not found.", &crate_info.name))?;
             if strict {
-                compare_crate_version_strict(&crate_info.version, &crate_from_crate_info)
+                compare_crate_version_strict(
+                    crate_info.version.as_ref().ok_or(format!(
+                        "Dependency version for '{}' is not specific enough to compare strictly.",
+                        &crate_info.name
+                    ))?,
+                    &crate_from_crate_info,
+                )
             } else {
                 compare_crate_version(&crate_info.version_req, &crate_from_crate_info)
             }
