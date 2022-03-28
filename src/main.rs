@@ -7,9 +7,9 @@ pub mod utils;
 use std::env;
 use utils::Result;
 
-fn check_cargo<'a>(
-    file: &'a Vec<crateinfo::CrateInfo>,
-) -> Result<Vec<&'a crateinfo::CrateInfo<'a>>> {
+fn check_cargo(
+    file: &Vec<crateinfo::CrateInfo>,
+) -> Result<Vec<&crateinfo::CrateInfo>> {
     let index = crates_index::Index::new_cargo_default()?;
     let out_of_date: Vec<_> = cratesio::out_of_date_crate_infos(false, &index, &file)?;
     Ok(out_of_date)
@@ -24,7 +24,7 @@ fn main() {
     }
     match args[1].to_lowercase().as_str() {
         "test" => match cargoreader::read_cargo_file() {
-            Ok(file) => match cargoreader::parse_cargo_file(&file) {
+            Ok(file) => match cargoreader::parse_cargo_file(file) {
                 Ok(cargo) => match check_cargo(&cargo) {
                     Ok(parsed) => println!("Ok: {:?}", parsed),
                     Err(err) => eprintln!("Check error: {}", err),

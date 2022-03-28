@@ -3,17 +3,17 @@ use semver::{Op, Version, VersionReq};
 use toml::Value;
 
 #[derive(Debug)]
-pub enum RawToml<'a> {
-    String(&'a Value),
-    Table(&'a Value),
+pub enum RawToml {
+    String(Value),
+    Table(Value),
 }
 
 #[derive(Debug)]
-pub struct CrateInfo<'a> {
+pub struct CrateInfo {
     pub name: String,
     pub version_req: VersionReq,
     pub version: Option<Version>,
-    pub raw_toml_value: RawToml<'a>,
+    pub raw_toml_value: RawToml,
 }
 
 pub fn get_versions_from_str(ver_str: &str) -> Result<(VersionReq, Option<Version>)> {

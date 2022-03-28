@@ -29,7 +29,7 @@ pub fn out_of_date_crate_infos<'a>(
     strict: bool,
     index: &Index,
     crate_infos: &'a [CrateInfo],
-) -> Result<Vec<&'a CrateInfo<'a>>> {
+) -> Result<Vec<&'a CrateInfo>> {
     let crate_infos_vec: Vec<_> = crate_infos.iter().collect();
     let crate_compares: Result<Vec<bool>> = crate_infos
         .iter()
