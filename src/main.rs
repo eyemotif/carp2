@@ -1,19 +1,12 @@
 pub mod cargoreader;
+mod commands;
 pub mod common;
 pub mod crateinfo;
 pub mod cratesio;
 pub mod utils;
 
+use common::version_req_str;
 use std::env;
-use utils::Result;
-
-fn check_cargo(
-    file: &Vec<crateinfo::CrateInfo>,
-) -> Result<Vec<&crateinfo::CrateInfo>> {
-    let index = crates_index::Index::new_cargo_default()?;
-    let out_of_date: Vec<_> = cratesio::out_of_date_crate_infos(false, &index, &file)?;
-    Ok(out_of_date)
-}
 
 fn main() {
     let args: Vec<_> = env::args().collect();
@@ -22,20 +15,25 @@ fn main() {
         eprintln!("Usage: carp <command>");
         return;
     }
-    match args[1].to_lowercase().as_str() {
-        "test" => match cargoreader::read_cargo_file() {
-            Ok(file) => match cargoreader::parse_cargo_file(file) {
-                Ok(cargo) => match check_cargo(&cargo) {
-                    Ok(parsed) => println!("Ok: {:?}", parsed),
-                    Err(err) => eprintln!("Check error: {}", err),
-                },
-                Err(err) => eprintln!("Get error: {}", err),
+
+    match commands::parse_args(&args[1..]) {
+        Ok(command) => match command.name.as_str() {
+            "list" => match cargoreader::read_cargo_file()
+                .and_then(|cargo_file| cargoreader::parse_cargo_file(cargo_file))
+            {
+                Ok(dependencies) => {
+                    for dependency in dependencies {
+                        println!(
+                            "{} ({})",
+                            dependency.name,
+                            version_req_str(&dependency.version_req)
+                        )
+                    }
+                }
+                Err(err) => eprintln!("ERROR reading dependencies: {}", err),
             },
-            Err(err) => eprintln!("Read error: {}", err),
+            unknown_command => eprintln!("Unknown command: {}", unknown_command),
         },
-        unknown_command => eprintln!(
-            "Unknown command '{}'. Use 'carp help' for a list of commands.",
-            unknown_command
-        ),
+        Err(err) => eprintln!("ERROR parsing command: {}", err),
     }
 }
