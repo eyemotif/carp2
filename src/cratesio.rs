@@ -16,13 +16,11 @@ fn get_crate_latest_version(crte: &Crate) -> Result<Version> {
 }
 
 fn compare_crate_version(current_version: &VersionReq, crte: &Crate) -> Result<bool> {
-    let crate_latest = get_crate_latest_version(crte)?;
-    Ok(current_version.matches(&crate_latest))
+    Ok(current_version.matches(&get_crate_latest_version(crte)?))
 }
 
 fn compare_crate_version_strict(current_version: &Version, crte: &Crate) -> Result<bool> {
-    let crate_latest = get_crate_latest_version(crte)?;
-    Ok(*current_version == crate_latest)
+    Ok(current_version == &get_crate_latest_version(crte)?)
 }
 
 pub fn get_crate_latest_versions(crte: &Crate) -> Result<(VersionReq, Option<Version>)> {
@@ -42,8 +40,8 @@ pub fn out_of_date_dependencies<'a>(
     only_strict: bool,
     index: &Index,
     dependencies: &'a Vec<&'a Dependency>,
-) -> Result<Vec<&'a Dependency>> {
-    let crate_compares: Result<Vec<bool>> = dependencies
+) -> Result<Vec<(&'a Dependency, Version)>> {
+    let crate_compares: Result<Vec<_>> = dependencies
         .iter()
         .map(|dependency| {
             let crate_from_dependency = index
@@ -57,22 +55,26 @@ pub fn out_of_date_dependencies<'a>(
                     ))?,
                     &crate_from_dependency,
                 )
+                .map(|comp| (comp, crate_from_dependency))
             } else if strict {
                 if let Some(version) = &dependency.version {
                     compare_crate_version_strict(version, &crate_from_dependency)
+                        .map(|comp| (comp, crate_from_dependency))
                 } else {
                     compare_crate_version(&dependency.version_req, &crate_from_dependency)
+                        .map(|comp| (comp, crate_from_dependency))
                 }
             } else {
                 compare_crate_version(&dependency.version_req, &crate_from_dependency)
+                    .map(|comp| (comp, crate_from_dependency))
             }
         })
         .collect();
-    let mut filtered_dependencies: Vec<&Dependency> = vec![];
+    let mut filtered_dependencies: Vec<_> = vec![];
 
-    for (compare, dependency) in crate_compares?.iter().zip(dependencies) {
-        if !*compare {
-            filtered_dependencies.push(dependency)
+    for ((compare, crte), dependency) in crate_compares?.iter().zip(dependencies) {
+        if !compare {
+            filtered_dependencies.push((*dependency, get_crate_latest_version(&crte)?))
         }
     }
     Ok(filtered_dependencies)

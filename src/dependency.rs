@@ -24,7 +24,7 @@ pub fn get_version_from_version_req(version_req: &VersionReq) -> Option<Version>
                 result = Some(Version::new(
                     comparator.major,
                     comparator.minor.unwrap(),
-                    comparator.minor.unwrap(),
+                    comparator.patch.unwrap(),
                 ));
                 break;
             }

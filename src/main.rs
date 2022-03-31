@@ -72,11 +72,12 @@ fn main() {
                             if out_of_date.len() == 0 {
                                 println!("Everything is up to date!")
                             } else {
-                                for dependency in out_of_date {
+                                for (dependency, latest_version) in out_of_date {
                                     println!(
-                                        "! {} ({})",
+                                        "! {} ({}): ({})",
                                         dependency.name,
-                                        version_req_str(&dependency.version_req)
+                                        version_req_str(&dependency.version_req),
+                                        latest_version
                                     )
                                 }
                             }
