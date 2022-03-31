@@ -2,6 +2,7 @@ use crate::utils::Result;
 
 pub struct CommandFlags {
     pub strict: bool,
+    pub only_strict: bool,
     pub entry: Option<String>,
 }
 pub struct Command {
@@ -17,6 +18,7 @@ pub fn parse_args(args: &[String]) -> Result<Command> {
     let mut filtered_args = vec![];
     let mut flags = CommandFlags {
         strict: false,
+        only_strict: false,
         entry: None,
     };
 
@@ -24,6 +26,7 @@ pub fn parse_args(args: &[String]) -> Result<Command> {
         if arg.starts_with("-") {
             match &arg[1..] {
                 "-strict" | "s" => flags.strict = true,
+                "-only-strict" | "o" => flags.only_strict = true,
                 "-entry" | "e" => flags.entry = Some("".to_owned()),
                 unknown_flag => return Err(format!("Unknown flag '{}'.", unknown_flag).into()),
             }

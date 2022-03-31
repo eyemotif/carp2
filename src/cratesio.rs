@@ -27,11 +27,19 @@ fn compare_crate_version_strict(current_version: &Version, crte: &Crate) -> Resu
 
 pub fn out_of_date_crate_infos<'a>(
     strict: bool,
+    only_strict: bool,
     index: &Index,
     crate_infos: &'a Vec<&'a CrateInfo>,
 ) -> Result<Vec<&'a CrateInfo>> {
     let crate_compares: Result<Vec<bool>> = crate_infos
         .iter()
+        .filter(|crate_info| {
+            if only_strict {
+                crate_info.version.is_some()
+            } else {
+                true
+            }
+        })
         .map(|crate_info| {
             let crate_from_crate_info = index
                 .crate_(&crate_info.name)

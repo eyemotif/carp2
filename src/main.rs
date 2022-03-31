@@ -63,6 +63,7 @@ fn main() {
                     match cratesio::get_index().and_then(|index| {
                         cratesio::out_of_date_crate_infos(
                             command.flags.strict,
+                            command.flags.only_strict,
                             &index,
                             &deps_to_check,
                         )
