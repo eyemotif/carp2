@@ -67,7 +67,7 @@ pub fn parse_cargo_file(file_value: Value) -> Result<Vec<CrateInfo>> {
 }
 
 pub fn write_dependencies(dependencies: Vec<CrateInfo>) -> Result<()> {
-    let cargo_file = read_cargo_file()?;
+    let mut cargo_file = read_cargo_file()?;
     let mut cargo_deps = cargo_file
         .get("dependencies")
         .ok_or("Could not locate the dependencies value in the Cargo.toml file given.")?
@@ -85,5 +85,8 @@ pub fn write_dependencies(dependencies: Vec<CrateInfo>) -> Result<()> {
             },
         );
     }
-    Ok(())
+
+    cargo_file["dependencies"] = Value::from(cargo_deps_table.to_owned());
+    let new_cargo_file = toml::ser::to_string(&cargo_file)?;
+    Ok(fs::write(get_cargo_path(), new_cargo_file)?)
 }

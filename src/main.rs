@@ -81,13 +81,59 @@ fn main() {
                                 }
                             }
                         }
-                        Err(err) => {
-                            eprintln!("ERROR checking out of date dependencies: {}", err)
-                        }
+                        Err(err) => eprintln!("ERROR checking out of date dependencies: {}", err),
                     }
                 }
                 Err(err) => eprintln!("ERROR reading dependencies: {}", err),
             },
+            "add" => {
+                if command.args.len() < 1 {
+                    eprintln!("Usage: carp add <crate> [version]");
+                    return;
+                }
+                match cratesio::get_index().and_then(|index| {
+                    if let Some(crte) = index.crate_(&command.args[0]) {
+                        cratesio::get_crate_latest_versions(&crte)
+                    } else {
+                        Err(format!("Could not find crate '{}'", &command.args[0]).into())
+                    }
+                }) {
+                    Ok((version_req, version)) => {
+                        let (new_version_req, new_version, new_raw_toml) = if command.args.len() > 1
+                        {
+                            todo!("specified version")
+                        } else {
+                            (
+                                &version_req,
+                                &version,
+                                crateinfo::RawToml::String(
+                                    format!("{}", version_req_str(&version_req)).into(),
+                                ),
+                            )
+                        };
+                        match cargoreader::read_cargo_file()
+                            .and_then(|cargo_file| cargoreader::parse_cargo_file(cargo_file))
+                        {
+                            Ok(dependencies) => {
+                                let mut new_dependencies = dependencies;
+                                new_dependencies.push(crateinfo::CrateInfo {
+                                    name: command.args[0].to_owned(),
+                                    version_req: new_version_req.to_owned(),
+                                    version: new_version.to_owned(),
+                                    raw_toml_value: new_raw_toml,
+                                });
+                                match cargoreader::write_dependencies(new_dependencies) {
+                                    Ok(()) => (),
+                                    Err(err) => eprintln!("ERROR writing dependencies: {}", err),
+                                }
+                            }
+                            Err(err) => eprintln!("ERROR reading dependencies: {}", err),
+                        }
+                    }
+                    Err(err) => eprintln!("ERROR finding crate: '{}'", err),
+                }
+            }
+
             unknown_command => eprintln!("Unknown command: {}", unknown_command),
         },
         Err(err) => eprintln!("ERROR parsing command: {}", err),

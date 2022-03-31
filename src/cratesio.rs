@@ -1,4 +1,4 @@
-use crate::crateinfo::CrateInfo;
+use crate::crateinfo::{get_versions_from_str, CrateInfo};
 use crate::utils::Result;
 use crates_index::{Crate, Index};
 use semver::{Version, VersionReq};
@@ -23,6 +23,18 @@ fn compare_crate_version(current_version: &VersionReq, crte: &Crate) -> Result<b
 fn compare_crate_version_strict(current_version: &Version, crte: &Crate) -> Result<bool> {
     let crate_latest = get_crate_latest_version(crte)?;
     Ok(*current_version == crate_latest)
+}
+
+pub fn get_crate_latest_versions(crte: &Crate) -> Result<(VersionReq, Option<Version>)> {
+    let crate_latest_str = crte
+        .highest_stable_version()
+        .ok_or(format!(
+            "Could not find the latest version for crate '{}'.",
+            crte.name()
+        ))?
+        .version();
+    let versions = get_versions_from_str(crate_latest_str)?;
+    Ok(versions)
 }
 
 pub fn out_of_date_crate_infos<'a>(
