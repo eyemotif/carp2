@@ -28,9 +28,8 @@ fn compare_crate_version_strict(current_version: &Version, crte: &Crate) -> Resu
 pub fn out_of_date_crate_infos<'a>(
     strict: bool,
     index: &Index,
-    crate_infos: &'a [CrateInfo],
+    crate_infos: &'a Vec<&'a CrateInfo>,
 ) -> Result<Vec<&'a CrateInfo>> {
-    let crate_infos_vec: Vec<_> = crate_infos.iter().collect();
     let crate_compares: Result<Vec<bool>> = crate_infos
         .iter()
         .map(|crate_info| {
@@ -52,7 +51,7 @@ pub fn out_of_date_crate_infos<'a>(
         .collect();
     let mut filtered_crate_infos: Vec<&CrateInfo> = vec![];
 
-    for (compare, crate_info) in crate_compares?.iter().zip(crate_infos_vec) {
+    for (compare, crate_info) in crate_compares?.iter().zip(crate_infos) {
         if !*compare {
             filtered_crate_infos.push(crate_info)
         }
@@ -68,4 +67,9 @@ pub fn crate_has_version(version: &VersionReq, crte: &Crate) -> Result<bool> {
         }
     }
     Ok(false)
+}
+
+pub fn get_index() -> Result<Index> {
+    let index = Index::new_cargo_default()?;
+    Ok(index)
 }
