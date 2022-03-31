@@ -1,4 +1,4 @@
-use crate::crateinfo::{get_versions_from_str, CrateInfo};
+use crate::dependency::{get_versions_from_str, Dependency};
 use crate::utils::Result;
 use crates_index::{Crate, Index};
 use semver::{Version, VersionReq};
@@ -37,46 +37,45 @@ pub fn get_crate_latest_versions(crte: &Crate) -> Result<(VersionReq, Option<Ver
     Ok(versions)
 }
 
-pub fn out_of_date_crate_infos<'a>(
+pub fn out_of_date_dependencies<'a>(
     strict: bool,
     only_strict: bool,
     index: &Index,
-    crate_infos: &'a Vec<&'a CrateInfo>,
-) -> Result<Vec<&'a CrateInfo>> {
-    let crate_compares: Result<Vec<bool>> = crate_infos
+    dependencies: &'a Vec<&'a Dependency>,
+) -> Result<Vec<&'a Dependency>> {
+    let crate_compares: Result<Vec<bool>> = dependencies
         .iter()
-        .filter(|crate_info| {
+        .map(|dependency| {
+            let crate_from_dependency = index
+                .crate_(&dependency.name)
+                .ok_or(format!("Crate '{}' not found.", &dependency.name))?;
             if only_strict {
-                crate_info.version.is_some()
-            } else {
-                true
-            }
-        })
-        .map(|crate_info| {
-            let crate_from_crate_info = index
-                .crate_(&crate_info.name)
-                .ok_or(format!("Crate '{}' not found.", &crate_info.name))?;
-            if strict {
                 compare_crate_version_strict(
-                    crate_info.version.as_ref().ok_or(format!(
+                    dependency.version.as_ref().ok_or(format!(
                         "Dependency version for '{}' is not specific enough to compare strictly.",
-                        &crate_info.name
+                        &dependency.name
                     ))?,
-                    &crate_from_crate_info,
+                    &crate_from_dependency,
                 )
+            } else if strict {
+                if let Some(version) = &dependency.version {
+                    compare_crate_version_strict(version, &crate_from_dependency)
+                } else {
+                    compare_crate_version(&dependency.version_req, &crate_from_dependency)
+                }
             } else {
-                compare_crate_version(&crate_info.version_req, &crate_from_crate_info)
+                compare_crate_version(&dependency.version_req, &crate_from_dependency)
             }
         })
         .collect();
-    let mut filtered_crate_infos: Vec<&CrateInfo> = vec![];
+    let mut filtered_dependencies: Vec<&Dependency> = vec![];
 
-    for (compare, crate_info) in crate_compares?.iter().zip(crate_infos) {
+    for (compare, dependency) in crate_compares?.iter().zip(dependencies) {
         if !*compare {
-            filtered_crate_infos.push(crate_info)
+            filtered_dependencies.push(dependency)
         }
     }
-    Ok(filtered_crate_infos)
+    Ok(filtered_dependencies)
 }
 
 pub fn crate_has_version(version: &VersionReq, crte: &Crate) -> Result<bool> {

@@ -9,7 +9,7 @@ pub enum RawToml {
 }
 
 #[derive(Debug)]
-pub struct CrateInfo {
+pub struct Dependency {
     pub name: String,
     pub version_req: VersionReq,
     pub version: Option<Version>,
@@ -40,9 +40,9 @@ pub fn get_versions_from_str(ver_str: &str) -> Result<(VersionReq, Option<Versio
     Ok((version_req, version))
 }
 
-pub fn transform_crate_info_version(ver_str: &str, crate_info: CrateInfo) -> Result<CrateInfo> {
+pub fn transform_dependency_version(ver_str: &str, dependency: Dependency) -> Result<Dependency> {
     let (version_req, version) = get_versions_from_str(ver_str)?;
-    let transformed_raw_toml = match crate_info.raw_toml_value {
+    let transformed_raw_toml = match dependency.raw_toml_value {
         RawToml::String(_) => RawToml::String(Value::from(ver_str)),
         RawToml::Table(mut table) => {
             let new_table = table
@@ -52,8 +52,8 @@ pub fn transform_crate_info_version(ver_str: &str, crate_info: CrateInfo) -> Res
             RawToml::Table(Value::from(new_table.to_owned()))
         }
     };
-    Ok(CrateInfo {
-        name: crate_info.name,
+    Ok(Dependency {
+        name: dependency.name,
         version_req,
         version,
         raw_toml_value: transformed_raw_toml,

@@ -1,13 +1,13 @@
 use crate::common::get_cargo_path;
-use crate::crateinfo::{get_versions_from_str, CrateInfo, RawToml};
+use crate::dependency::{get_versions_from_str, Dependency, RawToml};
 use crate::utils::Result;
 use std::fs;
 use toml::Value;
 
-fn parse_dependency_value<'a>(name: &str, value: Value) -> Result<CrateInfo> {
+fn parse_dependency_value<'a>(name: &str, value: Value) -> Result<Dependency> {
     if let Some(string) = value.as_str() {
         let (version_req, version) = get_versions_from_str(string)?;
-        Ok(CrateInfo {
+        Ok(Dependency {
             name: name.to_string(),
             version,
             version_req,
@@ -23,7 +23,7 @@ fn parse_dependency_value<'a>(name: &str, value: Value) -> Result<CrateInfo> {
             .as_str()
         {
             let (version_req, version) = get_versions_from_str(ver)?;
-            Ok(CrateInfo {
+            Ok(Dependency {
                 name: name.to_string(),
                 version,
                 version_req,
@@ -51,14 +51,14 @@ pub fn read_cargo_file() -> Result<Value> {
     Ok(parse)
 }
 
-pub fn parse_cargo_file(file_value: Value) -> Result<Vec<CrateInfo>> {
+pub fn parse_cargo_file(file_value: Value) -> Result<Vec<Dependency>> {
     let dependencies_table = file_value
         .get("dependencies")
         .ok_or("Could not locate the dependencies value in the Cargo.toml file given.")?
         .as_table()
         .ok_or("Could not parse the dependencies value to a table in the Cargo.toml file given.")?
         .to_owned();
-    let mut dependencies: Vec<CrateInfo> = vec![];
+    let mut dependencies: Vec<Dependency> = vec![];
 
     for (k, v) in dependencies_table {
         dependencies.push(parse_dependency_value(&k, v)?);
@@ -66,7 +66,7 @@ pub fn parse_cargo_file(file_value: Value) -> Result<Vec<CrateInfo>> {
     Ok(dependencies)
 }
 
-pub fn write_dependencies(dependencies: Vec<CrateInfo>) -> Result<()> {
+pub fn write_dependencies(dependencies: Vec<Dependency>) -> Result<()> {
     let mut cargo_file = read_cargo_file()?;
     let mut cargo_deps = cargo_file
         .get("dependencies")
@@ -76,10 +76,10 @@ pub fn write_dependencies(dependencies: Vec<CrateInfo>) -> Result<()> {
         .as_table_mut()
         .ok_or("Could not parse the dependencies value to a table in the Cargo.toml file given.")?;
 
-    for crate_info in dependencies {
+    for dependency in dependencies {
         cargo_deps_table.insert(
-            crate_info.name,
-            match crate_info.raw_toml_value {
+            dependency.name,
+            match dependency.raw_toml_value {
                 RawToml::String(string) => string,
                 RawToml::Table(table) => table,
             },

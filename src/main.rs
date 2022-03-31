@@ -1,15 +1,15 @@
 pub mod cargoreader;
 mod commands;
 pub mod common;
-pub mod crateinfo;
 pub mod cratesio;
+pub mod dependency;
 pub mod utils;
 
 use crate::common::version_req_str;
 use crate::utils::Join;
 use std::env;
 
-fn get_dependencies() -> utils::Result<Vec<crateinfo::CrateInfo>> {
+fn get_dependencies() -> utils::Result<Vec<dependency::Dependency>> {
     cargoreader::read_cargo_file().and_then(|cargo_file| cargoreader::parse_cargo_file(cargo_file))
 }
 
@@ -40,8 +40,8 @@ fn main() {
                     let check_all_deps = command.args.len() == 0;
                     let deps_to_check: Vec<_> = dependencies
                         .iter()
-                        .filter(|crate_info| {
-                            check_all_deps || command.args.iter().any(|arg| arg == &crate_info.name)
+                        .filter(|dependency| {
+                            check_all_deps || command.args.iter().any(|arg| arg == &dependency.name)
                         })
                         .collect();
                     if !check_all_deps && deps_to_check.len() != command.args.len() {
@@ -51,7 +51,7 @@ fn main() {
                             .filter(|arg| {
                                 !deps_to_check
                                     .iter()
-                                    .any(|crate_info| arg == &crate_info.name)
+                                    .any(|dependency| arg == &dependency.name)
                             })
                             .join(",");
                         eprintln!(
@@ -61,7 +61,7 @@ fn main() {
                         return;
                     }
                     match cratesio::get_index().and_then(|index| {
-                        cratesio::out_of_date_crate_infos(
+                        cratesio::out_of_date_dependencies(
                             command.flags.strict,
                             command.flags.only_strict,
                             &index,
@@ -106,7 +106,7 @@ fn main() {
                             (
                                 &version_req,
                                 &version,
-                                crateinfo::RawToml::String(
+                                dependency::RawToml::String(
                                     format!("{}", version_req_str(&version_req)).into(),
                                 ),
                             )
@@ -116,7 +116,7 @@ fn main() {
                         {
                             Ok(dependencies) => {
                                 let mut new_dependencies = dependencies;
-                                new_dependencies.push(crateinfo::CrateInfo {
+                                new_dependencies.push(dependency::Dependency {
                                     name: command.args[0].to_owned(),
                                     version_req: new_version_req.to_owned(),
                                     version: new_version.to_owned(),
