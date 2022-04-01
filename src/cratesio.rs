@@ -35,12 +35,12 @@ pub fn get_crate_latest_versions(crte: &Crate) -> Result<(VersionReq, Option<Ver
     Ok(versions)
 }
 
-pub fn out_of_date_dependencies<'a>(
+pub fn out_of_date_dependencies(
     strict: bool,
     only_strict: bool,
     index: &Index,
-    dependencies: &'a Vec<&'a Dependency>,
-) -> Result<Vec<(&'a Dependency, Version)>> {
+    dependencies: Vec<Dependency>,
+) -> Result<Vec<(Dependency, Version)>> {
     let crate_compares: Result<Vec<_>> = dependencies
         .iter()
         .map(|dependency| {
@@ -70,14 +70,22 @@ pub fn out_of_date_dependencies<'a>(
             }
         })
         .collect();
-    let mut filtered_dependencies: Vec<_> = vec![];
-
-    for ((compare, crte), dependency) in crate_compares?.iter().zip(dependencies) {
-        if !compare {
-            filtered_dependencies.push((*dependency, get_crate_latest_version(&crte)?))
-        }
-    }
-    Ok(filtered_dependencies)
+    dependencies
+        .into_iter()
+        .zip(crate_compares?)
+        .filter_map(
+            |(dependency, (compare, crte))| match get_crate_latest_version(&crte) {
+                Ok(latest_version) => {
+                    if !compare {
+                        Some(Ok((dependency, latest_version)))
+                    } else {
+                        None
+                    }
+                }
+                Err(err) => Some(Err(err)),
+            },
+        )
+        .collect()
 }
 
 pub fn crate_has_version(version: &VersionReq, crte: &Crate) -> Result<bool> {

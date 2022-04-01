@@ -6,11 +6,35 @@ pub mod dependency;
 pub mod utils;
 
 use crate::common::version_req_str;
-use crate::utils::Join;
+use crate::utils::{Join, Result};
 use std::env;
 
-fn get_dependencies() -> utils::Result<Vec<dependency::Dependency>> {
+fn get_dependencies() -> Result<Vec<dependency::Dependency>> {
     cargoreader::read_cargo_file().and_then(|cargo_file| cargoreader::parse_cargo_file(cargo_file))
+}
+
+fn check_dependencies(
+    check: &Vec<String>,
+    dependencies: Vec<dependency::Dependency>,
+) -> Result<Vec<dependency::Dependency>> {
+    let check_all_deps = check.len() == 0;
+    let deps_to_check: Vec<_> = dependencies
+        .into_iter()
+        .filter(|dependency| check_all_deps || check.iter().any(|arg| arg == &dependency.name))
+        .collect();
+    if check_all_deps || deps_to_check.len() == check.len() {
+        Ok(deps_to_check)
+    } else {
+        let unknown_deps = check
+            .into_iter()
+            .filter(|arg| {
+                !deps_to_check
+                    .iter()
+                    .any(|dependency| *arg == &dependency.name)
+            })
+            .join(",");
+        Err(format!("Crate(s) '{}' not found.", unknown_deps).into())
+    }
 }
 
 fn main() {
@@ -37,37 +61,18 @@ fn main() {
             },
             "check" => match get_dependencies() {
                 Ok(dependencies) => {
-                    let check_all_deps = command.args.len() == 0;
-                    let deps_to_check: Vec<_> = dependencies
-                        .iter()
-                        .filter(|dependency| {
-                            check_all_deps || command.args.iter().any(|arg| arg == &dependency.name)
-                        })
-                        .collect();
-                    if !check_all_deps && deps_to_check.len() != command.args.len() {
-                        let unknown_deps = command
-                            .args
-                            .into_iter()
-                            .filter(|arg| {
-                                !deps_to_check
-                                    .iter()
-                                    .any(|dependency| arg == &dependency.name)
+                    match check_dependencies(&command.args, dependencies).and_then(
+                        |deps_to_check| {
+                            cratesio::get_index().and_then(move |index| {
+                                cratesio::out_of_date_dependencies(
+                                    command.flags.strict,
+                                    command.flags.only_strict,
+                                    &index,
+                                    deps_to_check,
+                                )
                             })
-                            .join(",");
-                        eprintln!(
-                            "ERROR checking out of date dependencies: Crate(s) '{}' not found.",
-                            unknown_deps
-                        );
-                        return;
-                    }
-                    match cratesio::get_index().and_then(|index| {
-                        cratesio::out_of_date_dependencies(
-                            command.flags.strict,
-                            command.flags.only_strict,
-                            &index,
-                            &deps_to_check,
-                        )
-                    }) {
+                        },
+                    ) {
                         Ok(out_of_date) => {
                             if out_of_date.len() == 0 {
                                 println!("Everything is up to date!")
