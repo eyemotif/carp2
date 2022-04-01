@@ -69,9 +69,7 @@ pub fn parse_cargo_file(file_value: Value) -> Result<Vec<Dependency>> {
 pub fn write_dependencies(dependencies: Vec<Dependency>) -> Result<()> {
     let mut cargo_file = read_cargo_file()?;
     let mut new_cargo_deps = Value::Table(toml::map::Map::new());
-    let cargo_deps_table = new_cargo_deps
-        .as_table_mut()
-        .ok_or("Could not parse the dependencies value to a table in the Cargo.toml file given.")?;
+    let cargo_deps_table = new_cargo_deps.as_table_mut().unwrap();
 
     for dependency in dependencies {
         cargo_deps_table.insert(
