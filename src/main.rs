@@ -100,29 +100,47 @@ fn main() {
                     }
                 }) {
                     Ok((version_req, version)) => {
-                        let (new_version_req, new_version, new_raw_toml) = if command.args.len() > 1
-                        {
-                            todo!("specified version")
+                        let new_dependency = if command.args.len() > 1 {
+                            let toml_value_str = &command.raw_args[command.args[0].len()..];
+
+                            // TODO: why doesnt this parse anything?
+                            match toml_value_str.parse::<toml::Value>() {
+                                Ok(toml_value) => {
+                                    match cargoreader::parse_dependency_value(
+                                        &command.args[0],
+                                        toml_value,
+                                    ) {
+                                        Ok(dependency) => dependency,
+                                        Err(err) => {
+                                            eprintln!(
+                                                "ERROR parsing arguments to a dependency: {}",
+                                                err
+                                            );
+                                            return;
+                                        }
+                                    }
+                                }
+                                Err(err) => {
+                                    eprintln!("ERROR parsing arguments into a TOML value: {}", err);
+                                    return;
+                                }
+                            }
                         } else {
-                            (
-                                &version_req,
-                                &version,
-                                dependency::RawToml::String(
+                            dependency::Dependency {
+                                name: command.args[0].to_owned(),
+                                version_req: version_req.clone(),
+                                version: version.clone(),
+                                raw_toml_value: dependency::RawToml::String(
                                     format!("{}", version_req_str(&version_req)).into(),
                                 ),
-                            )
+                            }
                         };
                         match cargoreader::read_cargo_file()
                             .and_then(|cargo_file| cargoreader::parse_cargo_file(cargo_file))
                         {
                             Ok(dependencies) => {
                                 let mut new_dependencies = dependencies;
-                                new_dependencies.push(dependency::Dependency {
-                                    name: command.args[0].to_owned(),
-                                    version_req: new_version_req.to_owned(),
-                                    version: new_version.to_owned(),
-                                    raw_toml_value: new_raw_toml,
-                                });
+                                new_dependencies.push(new_dependency);
                                 match cargoreader::write_dependencies(new_dependencies) {
                                     Ok(()) => (),
                                     Err(err) => eprintln!("ERROR writing dependencies: {}", err),
@@ -132,6 +150,34 @@ fn main() {
                         }
                     }
                     Err(err) => eprintln!("ERROR finding crate: '{}'", err),
+                }
+            }
+            "rem" => {
+                if command.args.len() != 1 {
+                    eprintln!("Usage: carp rem <dependency>");
+                    return;
+                }
+                match get_dependencies() {
+                    Ok(dependencies) => {
+                        if dependencies
+                            .iter()
+                            .any(|dependency| dependency.name == command.args[0])
+                        {
+                            let new_dependencies = dependencies
+                                .into_iter()
+                                .filter(|dependency| dependency.name != command.args[0]);
+                            match cargoreader::write_dependencies(new_dependencies.collect()) {
+                                Ok(()) => println!("- {}", command.args[0]),
+                                Err(err) => eprintln!("ERROR writing dependencies: {}", err),
+                            }
+                        } else {
+                            eprintln!(
+                                "ERROR removing dependency: Dependency '{}' not found",
+                                command.args[0]
+                            );
+                        }
+                    }
+                    Err(err) => eprintln!("ERROR reading dependencies: {}", err),
                 }
             }
 

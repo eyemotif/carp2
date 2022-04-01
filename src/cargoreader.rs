@@ -4,7 +4,7 @@ use crate::utils::Result;
 use std::fs;
 use toml::Value;
 
-fn parse_dependency_value<'a>(name: &str, value: Value) -> Result<Dependency> {
+pub fn parse_dependency_value<'a>(name: &str, value: Value) -> Result<Dependency> {
     if let Some(string) = value.as_str() {
         let (version_req, version) = get_versions_from_str(string)?;
         Ok(Dependency {
@@ -68,11 +68,8 @@ pub fn parse_cargo_file(file_value: Value) -> Result<Vec<Dependency>> {
 
 pub fn write_dependencies(dependencies: Vec<Dependency>) -> Result<()> {
     let mut cargo_file = read_cargo_file()?;
-    let mut cargo_deps = cargo_file
-        .get("dependencies")
-        .ok_or("Could not locate the dependencies value in the Cargo.toml file given.")?
-        .to_owned();
-    let cargo_deps_table = cargo_deps
+    let mut new_cargo_deps = Value::Table(toml::map::Map::new());
+    let cargo_deps_table = new_cargo_deps
         .as_table_mut()
         .ok_or("Could not parse the dependencies value to a table in the Cargo.toml file given.")?;
 
@@ -86,7 +83,7 @@ pub fn write_dependencies(dependencies: Vec<Dependency>) -> Result<()> {
         );
     }
 
-    cargo_file["dependencies"] = Value::from(cargo_deps_table.to_owned());
+    cargo_file["dependencies"] = new_cargo_deps;
     let new_cargo_file = toml::ser::to_string(&cargo_file)?;
     Ok(fs::write(get_cargo_path(), new_cargo_file)?)
 }
