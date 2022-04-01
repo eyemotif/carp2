@@ -1,5 +1,5 @@
 pub mod cargoreader;
-mod commands;
+mod command;
 pub mod common;
 pub mod cratesio;
 pub mod dependency;
@@ -21,7 +21,7 @@ fn main() {
         return;
     }
 
-    match commands::parse_args(&args[1..]) {
+    match command::parse_args(&args[1..]) {
         Ok(command) => match command.name.as_str() {
             "list" => match get_dependencies() {
                 Ok(dependencies) => {
