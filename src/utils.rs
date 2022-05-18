@@ -28,3 +28,26 @@ where
         result
     }
 }
+
+pub trait One<T, F>
+where
+    Self: Iterator<Item = T>,
+    F: Fn(&T) -> bool,
+{
+    fn one(self, predicate: F) -> Option<T>;
+}
+
+impl<I, T, F> One<T, F> for I
+where
+    I: Iterator<Item = T>,
+    F: Fn(&T) -> bool,
+{
+    fn one(self, predicate: F) -> Option<T> {
+        for el in self {
+            if predicate(&el) {
+                return Some(el);
+            }
+        }
+        None
+    }
+}

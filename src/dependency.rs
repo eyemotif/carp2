@@ -2,13 +2,13 @@ use crate::utils::Result;
 use semver::{Op, Version, VersionReq};
 use toml::Value;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum RawToml {
     String(Value),
     Table(Value),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Dependency {
     pub name: String,
     pub version_req: VersionReq,
@@ -21,17 +21,27 @@ pub fn get_version_from_version_req(version_req: &VersionReq) -> Option<Version>
     for comparator in &version_req.comparators {
         match comparator.op {
             Op::Exact | Op::Tilde | Op::Caret => {
-                result = Some(Version::new(
-                    comparator.major,
-                    comparator.minor.unwrap(),
-                    comparator.patch.unwrap(),
-                ));
-                break;
+                if let (Some(minor), Some(patch)) = (comparator.minor, comparator.patch) {
+                    result = Some(Version::new(comparator.major, minor, patch));
+                    break;
+                }
             }
             _ => (),
         }
     }
     result
+}
+
+pub fn get_version_req_from_version(version: &Version) -> VersionReq {
+    VersionReq {
+        comparators: vec![semver::Comparator {
+            op: Op::Caret,
+            major: version.major,
+            minor: Some(version.minor),
+            patch: Some(version.patch),
+            pre: version.pre.clone(),
+        }],
+    }
 }
 
 pub fn get_versions_from_str(ver_str: &str) -> Result<(VersionReq, Option<Version>)> {

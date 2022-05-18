@@ -39,7 +39,7 @@ pub fn out_of_date_dependencies(
     strict: bool,
     only_strict: bool,
     index: &Index,
-    dependencies: Vec<Dependency>,
+    dependencies: &Vec<Dependency>,
 ) -> Result<Vec<(Dependency, Version)>> {
     let crate_compares: Result<Vec<_>> = dependencies
         .iter()
@@ -77,7 +77,7 @@ pub fn out_of_date_dependencies(
             |(dependency, (compare, crte))| match get_crate_latest_version(&crte) {
                 Ok(latest_version) => {
                     if !compare {
-                        Some(Ok((dependency, latest_version)))
+                        Some(Ok((dependency.to_owned(), latest_version)))
                     } else {
                         None
                     }

@@ -6,17 +6,18 @@ pub mod dependency;
 pub mod utils;
 
 use crate::common::version_req_str;
-use crate::utils::{Join, Result};
+use crate::utils::{Join, One, Result};
+use dependency::{transform_dependency_version, Dependency};
 use std::env;
 
-fn get_dependencies() -> Result<Vec<dependency::Dependency>> {
+fn get_dependencies() -> Result<Vec<Dependency>> {
     cargoreader::read_cargo_file().and_then(|cargo_file| cargoreader::parse_cargo_file(cargo_file))
 }
 
-fn check_dependencies(
+fn filter_dependencies(
     check: &Vec<String>,
-    dependencies: Vec<dependency::Dependency>,
-) -> Result<Vec<dependency::Dependency>> {
+    dependencies: Vec<Dependency>,
+) -> Result<Vec<Dependency>> {
     let check_all_deps = check.len() == 0;
     let deps_to_check: Vec<_> = dependencies
         .into_iter()
@@ -61,14 +62,14 @@ fn main() {
             },
             "check" => match get_dependencies() {
                 Ok(dependencies) => {
-                    match check_dependencies(&command.args, dependencies).and_then(
+                    match filter_dependencies(&command.args, dependencies).and_then(
                         |deps_to_check| {
                             cratesio::get_index().and_then(move |index| {
                                 cratesio::out_of_date_dependencies(
                                     command.flags.strict,
                                     command.flags.only_strict,
                                     &index,
-                                    deps_to_check,
+                                    &deps_to_check,
                                 )
                             })
                         },
@@ -131,7 +132,7 @@ fn main() {
                                 }
                             }
                         } else {
-                            dependency::Dependency {
+                            Dependency {
                                 name: command.args[0].to_owned(),
                                 version_req: version_req.clone(),
                                 version: version.clone(),
@@ -185,6 +186,68 @@ fn main() {
                     Err(err) => eprintln!("ERROR reading dependencies: {}", err),
                 }
             }
+            "update" => match get_dependencies() {
+                Ok(dependencies) => {
+                    match filter_dependencies(&command.args, dependencies.clone()).and_then(
+                        |deps_to_check| {
+                            cratesio::get_index().and_then(|index| {
+                                cratesio::out_of_date_dependencies(
+                                    command.flags.strict,
+                                    command.flags.only_strict,
+                                    &index,
+                                    &deps_to_check,
+                                )
+                            })
+                        },
+                    ) {
+                        Ok(out_of_date) => {
+                            if out_of_date.len() == 0 {
+                                println!("Everything is up to date!")
+                            } else {
+                                for (dependency, latest_version) in &out_of_date {
+                                    //TODO: update and write deps
+                                    println!(
+                                        "* {} ({}) -> ({})",
+                                        dependency.name,
+                                        version_req_str(&dependency.version_req),
+                                        latest_version
+                                    )
+                                }
+                                let update_result: Result<Vec<Dependency>> = dependencies
+                                    .into_iter()
+                                    .map(|dependency| {
+                                        if let Some((_, new_ver)) = out_of_date
+                                            .iter()
+                                            .one(|(ood, _)| ood.name == dependency.name)
+                                        {
+                                            transform_dependency_version(
+                                                &new_ver.to_string(),
+                                                dependency,
+                                            )
+                                        } else {
+                                            Ok(dependency)
+                                        }
+                                    })
+                                    .collect();
+
+                                match update_result {
+                                    Ok(updated_deps) => {
+                                        match cargoreader::write_dependencies(updated_deps) {
+                                            Ok(()) => (),
+                                            Err(err) => {
+                                                eprintln!("ERROR writing dependencies: {}", err)
+                                            }
+                                        }
+                                    }
+                                    Err(err) => eprintln!("ERROR updating dependencies: {}", err),
+                                }
+                            }
+                        }
+                        Err(err) => eprintln!("ERROR checking out of date dependencies: {}", err),
+                    }
+                }
+                Err(err) => eprintln!("ERROR reading dependencies: {}", err),
+            },
 
             unknown_command => eprintln!("Unknown command: {}", unknown_command),
         },
