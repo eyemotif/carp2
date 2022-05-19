@@ -1,7 +1,7 @@
 [dependencies]
 crates-index = "0.18.7"
-semver = "1.0.6"
-toml = "0.5.8"
+semver = "1.0.9"
+toml = "0.5.9"
 
 [package]
 edition = "2021"
