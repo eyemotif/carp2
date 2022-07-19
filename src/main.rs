@@ -64,7 +64,7 @@ fn main() {
                 Ok(dependencies) => {
                     match filter_dependencies(&command.args, dependencies).and_then(
                         |deps_to_check| {
-                            cratesio::get_index().and_then(move |index| {
+                            cratesio::get_index().and_then(|index| {
                                 cratesio::out_of_date_dependencies(
                                     command.flags.strict,
                                     command.flags.only_strict,
@@ -205,7 +205,6 @@ fn main() {
                                 println!("Everything is up to date!")
                             } else {
                                 for (dependency, latest_version) in &out_of_date {
-                                    //TODO: update and write deps
                                     println!(
                                         "* {} ({}) -> ({})",
                                         dependency.name,

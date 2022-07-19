@@ -51,3 +51,20 @@ where
         None
     }
 }
+
+pub trait Pass<T, F>
+where
+    F: Fn(&T) -> (),
+{
+    fn pass(self, predicate: F) -> T;
+}
+
+impl<T, F> Pass<T, F> for T
+where
+    F: Fn(&T) -> (),
+{
+    fn pass(self, predicate: F) -> T {
+        predicate(&self);
+        self
+    }
+}
